@@ -1,0 +1,596 @@
+import { ShopUI } from "./ShopUI.js";
+import { InventoryUI } from "./InventoryUI.js";
+
+export class LobbyUI {
+  constructor(inventory, currency, shop, player, soundManager = null) {
+    this.inventory = inventory;
+    this.currency = currency;
+    this.shop = shop;
+    this.player = player;
+    this.soundManager = soundManager;
+
+    this.shopUI = new ShopUI(shop, currency, inventory, player);
+    // ⭐ THÊM currency vào InventoryUI
+    this.inventoryUI = new InventoryUI(
+      inventory,
+      player,
+      soundManager,
+      currency,
+    );
+
+    this.showLevelSelect = false;
+    this.selectedLevel = 1;
+    this.hoveredMainBtn = -1;
+    this.hoveredLevel = -1;
+
+    this.levels = [
+      {
+        id: 1,
+        name: "Làng Khởi Đầu",
+        difficulty: "Dễ",
+        enemiesMultiplier: 1,
+        speedMultiplier: 1,
+        description: "Nơi khởi đầu hành trình",
+        unlocked: true,
+        hasMap: true,
+        mapFile: "map_lvl.json",
+        enemyPool: [
+          { type: "zombie", weight: 60 },
+          { type: "skeleton", weight: 40 },
+        ],
+        bossWaves: [10, 20],
+      },
+      {
+        id: 2,
+        name: "Rừng Tối",
+        difficulty: "Trung Bình",
+        enemiesMultiplier: 1.3,
+        speedMultiplier: 1.2,
+        description: "Quái vật mạnh hơn và nhanh hơn",
+        unlocked: true,
+        hasMap: true,
+        mapFile: "map_lvl2.json",
+        enemyPool: [
+          { type: "goblin", weight: 40 },
+          { type: "orc", weight: 35 },
+          { type: "darkwolf", weight: 25 },
+        ],
+        bossWaves: [8, 15, 25],
+      },
+      {
+        id: 3,
+        name: "Hang Động Ma",
+        difficulty: "Khó",
+        enemiesMultiplier: 1.6,
+        speedMultiplier: 1.4,
+        description: "Thử thách cho người chơi giỏi",
+        unlocked: true,
+        hasMap: true,
+        mapFile: "map_lvl3.json",
+        enemyPool: [
+          { type: "demon", weight: 35 },
+          { type: "wraith", weight: 35 },
+          { type: "golem", weight: 30 },
+        ],
+        bossWaves: [7, 12, 20],
+      },
+      {
+        id: 4,
+        name: "Địa Ngục",
+        difficulty: "Cực Khó",
+        enemiesMultiplier: 2,
+        speedMultiplier: 1.6,
+        description: "Chỉ dành cho các chiến binh",
+        unlocked: true,
+        hasMap: true,
+        mapFile: "map_lvl4.json",
+        enemyPool: [
+          { type: "dragon", weight: 35 },
+          { type: "lich", weight: 35 },
+          { type: "titan", weight: 30 },
+        ],
+        bossWaves: [5, 10, 15, 20, 25],
+      },
+    ];
+
+    /* ══════════════════════════════════════════════════════════
+       🎨 BACKGROUND ASSETS - Thay đổi đường dẫn ở đây
+    ══════════════════════════════════════════════════════════ */
+
+    // Main menu button backgrounds
+    this.bgButton = {
+      img: this._loadImg("assets/ui/button_bg.png"),
+      sliceSize: 3,
+      scale: 3,
+    };
+
+    // Level select panel background
+    this.bgLevelPanel = {
+      img: this._loadImg("assets/ui/panel_outer_bg.png"),
+      sliceSize: 5,
+      scale: 4,
+    };
+
+    // Level row backgrounds
+    this.bgLevelRow = {
+      img: this._loadImg("assets/ui/panel_bg.png"),
+      sliceSize: 5,
+      scale: 3,
+    };
+
+    // Close button image
+    this.closeButton = this._loadImg("assets/ui/close_button.png");
+  }
+
+  _loadImg(src) {
+    const img = new Image();
+    img.src = src;
+    return img;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     9-SLICE DRAWING
+  ══════════════════════════════════════════════════════════ */
+  _roundRect(ctx, x, y, w, h, r = 10) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  _draw9Slice(ctx, bgConfig, x, y, w, h, r = 10) {
+    const img = bgConfig.img;
+    const slice = bgConfig.sliceSize * bgConfig.scale;
+
+    x = Math.floor(x);
+    y = Math.floor(y);
+    w = Math.floor(w);
+    h = Math.floor(h);
+
+    if (!img || !img.complete || img.naturalWidth === 0) {
+      ctx.fillStyle = "#888888";
+      this._roundRect(ctx, x, y, w, h, r);
+      ctx.fill();
+      return;
+    }
+
+    const oldSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.save();
+
+    const imgW = img.naturalWidth;
+    const imgH = img.naturalHeight;
+    const s = slice / bgConfig.scale;
+
+    const x1 = Math.floor(x);
+    const y1 = Math.floor(y);
+    const x2 = Math.floor(x + slice);
+    const y2 = Math.floor(y + slice);
+    const x3 = Math.floor(x + w - slice);
+    const y3 = Math.floor(y + h - slice);
+    const x4 = Math.floor(x + w);
+    const y4 = Math.floor(y + h);
+
+    ctx.drawImage(img, 0, 0, s, s, x1, y1, x2 - x1, y2 - y1);
+    ctx.drawImage(img, imgW - s, 0, s, s, x3, y1, x4 - x3, y2 - y1);
+    ctx.drawImage(img, 0, imgH - s, s, s, x1, y3, x2 - x1, y4 - y3);
+    ctx.drawImage(img, imgW - s, imgH - s, s, s, x3, y3, x4 - x3, y4 - y3);
+
+    ctx.drawImage(img, s, 0, imgW - s * 2, s, x2, y1, x3 - x2, y2 - y1);
+    ctx.drawImage(img, s, imgH - s, imgW - s * 2, s, x2, y3, x3 - x2, y4 - y3);
+    ctx.drawImage(img, 0, s, s, imgH - s * 2, x1, y2, x2 - x1, y3 - y2);
+    ctx.drawImage(img, imgW - s, s, s, imgH - s * 2, x3, y2, x4 - x3, y3 - y2);
+
+    ctx.drawImage(
+      img,
+      s,
+      s,
+      imgW - s * 2,
+      imgH - s * 2,
+      x2,
+      y2,
+      x3 - x2,
+      y3 - y2,
+    );
+
+    ctx.restore();
+    ctx.imageSmoothingEnabled = oldSmoothing;
+  }
+
+  _shadow(ctx, blur = 18, color = "rgba(0,0,0,0.45)") {
+    ctx.shadowBlur = blur;
+    ctx.shadowColor = color;
+  }
+
+  _noShadow(ctx) {
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     LAYOUT
+  ══════════════════════════════════════════════════════════ */
+  _mainBtns(cW, cH) {
+    const btnW = 220,
+      btnH = 58,
+      gap = 18;
+    const bx = (cW - btnW) / 2;
+    const startY = cH * 0.52;
+    return [
+      {
+        label: "⚔️ CHIẾN ĐẤU",
+        x: bx,
+        y: startY,
+        w: btnW,
+        h: btnH,
+        action: "play",
+      },
+      {
+        label: "🎒 TÚI ĐỒ",
+        x: bx,
+        y: startY + (btnH + gap),
+        w: btnW,
+        h: btnH,
+        action: "inventory",
+      },
+      {
+        label: "🛒 CỬA HÀNG",
+        x: bx,
+        y: startY + (btnH + gap) * 2,
+        w: btnW,
+        h: btnH,
+        action: "shop",
+      },
+    ];
+  }
+
+  _levelLayout(cW, cH) {
+    const lvlW = 500,
+      lvlH = 76,
+      gap = 14;
+    const sidePad = 32; // Padding 2 bên
+    const totalH = this.levels.length * (lvlH + gap) - gap + 28;
+    const panelW = lvlW + sidePad * 2;
+    const panelH = totalH + 90; // Thêm padding trên/dưới
+    const panelX = (cW - panelW) / 2;
+    const panelY = (cH - panelH) / 2;
+    return { lvlW, lvlH, gap, sidePad, panelW, panelH, panelX, panelY };
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     DRAW - MAIN ENTRY
+  ══════════════════════════════════════════════════════════ */
+  draw(ctx, cW, cH) {
+    /* background gradient */
+    const grad = ctx.createLinearGradient(0, 0, cW, cH);
+    grad.addColorStop(0, "#1a1a2e");
+    grad.addColorStop(1, "#16213e");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, cW, cH);
+
+    this._drawTitle(ctx, cW, cH);
+    this._drawMainButtons(ctx, cW, cH);
+
+    if (this.showLevelSelect) this._drawLevelSelect(ctx, cW, cH);
+    this.inventoryUI.draw(ctx, cW, cH);
+    this.shopUI.draw(ctx, cW, cH);
+  }
+
+  _drawTitle(ctx, cW, cH) {
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = "#FFD700";
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "bold 62px Arial";
+    ctx.fillText("⚔️ DUNGEON QUEST", cW / 2, cH * 0.2);
+    ctx.shadowBlur = 0;
+
+    ctx.textAlign = "left";
+  }
+
+  _drawMainButtons(ctx, cW, cH) {
+    const btns = this._mainBtns(cW, cH);
+
+    btns.forEach((btn, i) => {
+      const hov = this.hoveredMainBtn === i;
+
+      this._shadow(ctx, hov ? 16 : 8, "rgba(0,0,0,0.5)");
+
+      if (this.bgButton?.img?.complete) {
+        this._draw9Slice(ctx, this.bgButton, btn.x, btn.y, btn.w, btn.h, 12);
+
+        // Highlight khi hover
+        if (hov) {
+          ctx.fillStyle = "rgba(255,255,255,0.2)";
+          this._roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 12);
+          ctx.fill();
+        }
+      } else {
+        // Fallback
+        ctx.fillStyle = hov
+          ? "rgba(200,200,210,0.97)"
+          : "rgba(160,160,175,0.90)";
+        this._roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 12);
+        ctx.fill();
+      }
+      this._noShadow(ctx);
+
+      if (hov) {
+        ctx.strokeStyle = "#FFD700";
+        ctx.lineWidth = 2;
+        this._roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 12);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 18px Arial";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.5)";
+      ctx.shadowBlur = 3;
+      ctx.fillText(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2 + 6);
+      ctx.shadowBlur = 0;
+    });
+    ctx.textAlign = "left";
+  }
+
+  _drawLevelSelect(ctx, cW, cH) {
+    const { lvlW, lvlH, gap, sidePad, panelW, panelH, panelX, panelY } =
+      this._levelLayout(cW, cH);
+
+    /* Dim */
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(0, 0, cW, cH);
+
+    /* Panel background với 9-slice */
+    this._shadow(ctx, 32, "rgba(0,0,0,0.6)");
+    this._draw9Slice(
+      ctx,
+      this.bgLevelPanel,
+      panelX,
+      panelY,
+      panelW,
+      panelH,
+      14,
+    );
+    this._noShadow(ctx);
+
+    /* Title */
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 32px Arial";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 4;
+    ctx.fillText("CẤP ĐỘ", panelX + panelW / 2, panelY + 60);
+    ctx.shadowBlur = 0;
+
+    const lvlX = panelX + sidePad;
+    let lvlY = panelY + 75;
+
+    const diffColor = {
+      Dễ: "#43a047",
+      "Trung Bình": "#fb8c00",
+      Khó: "#e53935",
+      "Cực Khó": "#7b1fa2",
+    };
+
+    this.levels.forEach((lvl, i) => {
+      const sel = this.selectedLevel === lvl.id;
+      const hov = this.hoveredLevel === i;
+
+      this._shadow(ctx, 6, "rgba(0,0,0,0.25)");
+
+      if (this.bgLevelRow?.img?.complete) {
+        this._draw9Slice(ctx, this.bgLevelRow, lvlX, lvlY, lvlW, lvlH, 10);
+
+        // Highlight
+        if (sel) {
+          ctx.fillStyle = "rgba(76,175,80,0.2)";
+          this._roundRect(ctx, lvlX, lvlY, lvlW, lvlH, 10);
+          ctx.fill();
+        } else if (hov) {
+          ctx.fillStyle = "rgba(255,255,255,0.1)";
+          this._roundRect(ctx, lvlX, lvlY, lvlW, lvlH, 10);
+          ctx.fill();
+        }
+      } else {
+        // Fallback
+        ctx.fillStyle = sel ? "#e8f5e9" : hov ? "#f5f5f5" : "#fafafa";
+        this._roundRect(ctx, lvlX, lvlY, lvlW, lvlH, 10);
+        ctx.fill();
+      }
+      this._noShadow(ctx);
+
+      if (sel) {
+        ctx.strokeStyle = "#4CAF50";
+        ctx.lineWidth = 3;
+        this._roundRect(ctx, lvlX, lvlY, lvlW, lvlH, 10);
+        ctx.stroke();
+      }
+
+      /* Level name */
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 20px Arial";
+      ctx.textAlign = "left";
+      ctx.shadowColor = "rgba(0,0,0,0.5)";
+      ctx.shadowBlur = 2;
+      ctx.fillText(`${lvl.id}. ${lvl.name}`, lvlX + 20, lvlY + lvlH / 2 - 6);
+      ctx.shadowBlur = 0;
+
+      /* Difficulty badge */
+      const dc = diffColor[lvl.difficulty] || "#555";
+      ctx.fillStyle = dc;
+      ctx.font = "bold 13px Arial";
+      ctx.fillText(`[${lvl.difficulty}]`, lvlX + 20, lvlY + lvlH / 2 + 14);
+
+      /* Multipliers */
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "right";
+      ctx.fillText(
+        `👾×${lvl.enemiesMultiplier}  ⚡×${lvl.speedMultiplier}`,
+        lvlX + lvlW - 14,
+        lvlY + lvlH / 2 + 14,
+      );
+
+      lvlY += lvlH + gap;
+    });
+
+    /* Close button với image */
+    this._drawCloseButton(ctx, panelX, panelY, panelW);
+
+    ctx.textAlign = "left";
+  }
+
+  _drawCloseButton(ctx, panelX, panelY, panelW) {
+    const btnSize = 44;
+    const cx = panelX + panelW + 6;
+    const cy = panelY - 6;
+    const btnX = cx - btnSize / 2;
+    const btnY = cy - btnSize / 2;
+
+    if (this.closeButton && this.closeButton.complete) {
+      const oldSmoothing = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+
+      this._shadow(ctx, 12, "rgba(0,0,0,0.5)");
+      ctx.drawImage(this.closeButton, btnX, btnY, btnSize, btnSize);
+      this._noShadow(ctx);
+
+      ctx.imageSmoothingEnabled = oldSmoothing;
+    } else {
+      // Fallback
+      this._shadow(ctx, 10, "rgba(0,0,0,0.4)");
+      ctx.fillStyle = "#ef5350";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fill();
+      this._noShadow(ctx);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 16px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("✕", cx, cy + 6);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     INTERACTION
+  ══════════════════════════════════════════════════════════ */
+  handleClick(mx, my, cW, cH) {
+    if (this.inventoryUI.isOpen) {
+      this.inventoryUI.handleClick(mx, my, cW, cH);
+      return null;
+    }
+    if (this.shopUI.isOpen) {
+      this.shopUI.handleClick(mx, my, cW, cH);
+      return null;
+    }
+    if (this.showLevelSelect) {
+      return this._handleLevelSelectClick(mx, my, cW, cH);
+    }
+
+    const btns = this._mainBtns(cW, cH);
+    for (const btn of btns) {
+      if (
+        mx >= btn.x &&
+        mx <= btn.x + btn.w &&
+        my >= btn.y &&
+        my <= btn.y + btn.h
+      ) {
+        if (this.soundManager) this.soundManager.playUIClick();
+        if (btn.action === "play") this.showLevelSelect = true;
+        if (btn.action === "inventory") this.inventoryUI.open();
+        if (btn.action === "shop") this.shopUI.open();
+        return null;
+      }
+    }
+    return null;
+  }
+
+  _handleLevelSelectClick(mx, my, cW, cH) {
+    const { lvlW, lvlH, gap, sidePad, panelW, panelH, panelX, panelY } =
+      this._levelLayout(cW, cH);
+
+    /* Close button */
+    const cx = panelX + panelW + 6,
+      cy = panelY - 6;
+    if (Math.hypot(mx - cx, my - cy) <= 22) {
+      this.showLevelSelect = false;
+      return null;
+    }
+
+    const lvlX = panelX + sidePad;
+    let lvlY = panelY + 60;
+
+    for (const lvl of this.levels) {
+      if (
+        lvl.unlocked &&
+        mx >= lvlX &&
+        mx <= lvlX + lvlW &&
+        my >= lvlY &&
+        my <= lvlY + lvlH
+      ) {
+        if (this.soundManager) this.soundManager.playUIClick();
+        this.selectedLevel = lvl.id;
+        this.showLevelSelect = false;
+        return { action: "startGame", level: lvl.id };
+      }
+      lvlY += lvlH + gap;
+    }
+    return null;
+  }
+
+  handleMouseMove(mx, my, cW, cH) {
+    if (this.inventoryUI.isOpen) {
+      this.inventoryUI.handleMouseMove(mx, my, cW, cH);
+      return;
+    }
+    if (this.shopUI.isOpen) {
+      this.shopUI.handleMouseMove(mx, my, cW, cH);
+      return;
+    }
+    if (this.showLevelSelect) {
+      this._updateLevelHover(mx, my, cW, cH);
+      return;
+    }
+
+    this.hoveredMainBtn = -1;
+    this._mainBtns(cW, cH).forEach((btn, i) => {
+      if (
+        mx >= btn.x &&
+        mx <= btn.x + btn.w &&
+        my >= btn.y &&
+        my <= btn.y + btn.h
+      )
+        this.hoveredMainBtn = i;
+    });
+  }
+
+  _updateLevelHover(mx, my, cW, cH) {
+    const { lvlW, lvlH, gap, sidePad, panelX, panelY } = this._levelLayout(
+      cW,
+      cH,
+    );
+    const lvlX = panelX + sidePad;
+    let lvlY = panelY + 60;
+
+    this.hoveredLevel = -1;
+    this.levels.forEach((lvl, i) => {
+      if (mx >= lvlX && mx <= lvlX + lvlW && my >= lvlY && my <= lvlY + lvlH)
+        this.hoveredLevel = i;
+      lvlY += lvlH + gap;
+    });
+  }
+
+  getSelectedLevel() {
+    return this.levels.find((l) => l.id === this.selectedLevel);
+  }
+}
