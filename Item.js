@@ -53,11 +53,11 @@ export class Item {
         break;
       case "gloves":
         this.stats.hp = Math.floor(5 * totalMultiplier);
-        this.stats.damage = Math.floor(2 * totalMultiplier);
+        this.stats.damage = Math.floor(8 * totalMultiplier);
         break;
       case "boots":
         this.stats.speed = Math.floor(1 * totalMultiplier);
-        this.stats.armor = Math.floor(1 * totalMultiplier);
+        this.stats.damage = Math.floor(2 * totalMultiplier);
         break;
     }
   }
