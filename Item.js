@@ -35,8 +35,8 @@ export class Item {
 
     const multiplier = rarityMultiplier[this.rarity];
 
-    // ⭐ Variant multiplier: mỗi variant tăng 10%
-    const variantMultiplier = 1 + this.variant * 0.1; // 0: 1.0, 1: 1.1, 2: 1.2
+    // ⭐ Variant multiplier: mỗi variant tăng 50%
+    const variantMultiplier = [1.0, 1.5, 2.0][this.variant] ?? 1.0;
 
     // Tổng multiplier
     const totalMultiplier = multiplier * variantMultiplier;
@@ -48,16 +48,16 @@ export class Item {
         this.stats.armor = Math.floor(1 * totalMultiplier);
         break;
       case "armor":
-        this.stats.armor = Math.floor(2 * totalMultiplier);
-        this.stats.hp = Math.floor(5 * totalMultiplier);
+        this.stats.armor = Math.floor(3 * totalMultiplier);
+        this.stats.hp = Math.floor(6 * totalMultiplier);
         break;
       case "gloves":
         this.stats.hp = Math.floor(5 * totalMultiplier);
-        this.stats.damage = Math.floor(8 * totalMultiplier);
+        this.stats.damage = Math.floor(12 * totalMultiplier);
         break;
       case "boots":
-        this.stats.speed = Math.floor(1 * totalMultiplier);
-        this.stats.damage = Math.floor(2 * totalMultiplier);
+        this.stats.speed = Math.min(3, Math.floor(1 * totalMultiplier));
+        this.stats.armor = Math.floor(2 * totalMultiplier);
         break;
     }
   }
