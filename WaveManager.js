@@ -373,14 +373,14 @@ this.enemyBullets.push(...this._explosionBuf);
     const totalEnemies = this.enemies.length + this.pendingSpawns.length;
 
   if (this.boss !== null) {
-    return `Đợt ${this.currentWave}/${this.maxWaves} - 👑 BOSS`;
+    return `Wave ${this.currentWave}/${this.maxWaves} - 👑 BOSS`;
   }
   if (totalEnemies > 0) {
-    return `Đợt ${this.currentWave}/${this.maxWaves} - Còn: ${totalEnemies} quái`;
+    return `Wave ${this.currentWave}/${this.maxWaves} - Remaining: ${totalEnemies} enemies`;
   }
   // Không còn quái → đang đếm ngược
   const timeLeft = Math.ceil((this.waveDelay - this.delayCounter) / 60);
-  return `Đợt tiếp theo trong: ${timeLeft}s`;
+  return `Next wave in: ${timeLeft}s`;
   }
 
   drawBossHP(ctx, cW) {

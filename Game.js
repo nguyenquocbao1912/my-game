@@ -384,7 +384,7 @@ if (goldEarned > 0) {
     if (this.waveManager) {
       this.ctx.fillText(this.waveManager.getWaveProgress(), 10, 25);
       this.ctx.fillText(
-        `Tiêu diệt: ${this.waveManager.totalEnemiesKilled}`,
+        `Killed ${this.waveManager.totalEnemiesKilled}`,
         10,
         50,
       );
